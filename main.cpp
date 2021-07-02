@@ -50,6 +50,7 @@ using namespace std::chrono_literals;
 //640 x 480 (480i - Smallest PC monitor)
 
 #define WALL_SPEED 0.1
+#define APPLE_SPEED 0.2
 
 int windowWidth = 240;
 int windowHeight = 320;
@@ -503,6 +504,7 @@ gameBegin:
     questionMarkR.x = windowWidth - questionMarkR.w;
     questionMarkR.y = 0;
     SDL_Texture* buttonT = IMG_LoadTexture(renderer, "res/button.png");
+    SDL_Texture* appleT = IMG_LoadTexture(renderer, "res/apple.png");
     std::vector<SDL_Texture*> playerTextures;
     for (int i = 0; i < 8; ++i) {
         playerTextures.push_back(IMG_LoadTexture(renderer, ("res/bird/PNG/frame-" + std::to_string(i + 1) + ".png").c_str()));
@@ -515,6 +517,7 @@ gameBegin:
     playerR.y = windowHeight - playerR.h;
     std::vector<SDL_FRect> wallsR;
     std::vector<SDL_FRect> buttonsR;
+    std::vector<SDL_FRect> applesR;
     addWall(wallsR, buttonsR);
     Text controls1Text;
     controls1Text.setText(renderer, robotoF, "Mouse Button - Jump");
@@ -551,6 +554,12 @@ gameBegin:
     creditsTexts.back().dstR.h = 10;
     creditsTexts.back().dstR.x = 0;
     creditsTexts.back().dstR.y = creditsTexts[1].dstR.y + creditsTexts[1].dstR.h;
+    creditsTexts.push_back(Text());
+    creditsTexts.back().setText(renderer, robotoF, "Freepik");
+    creditsTexts.back().dstR.w = windowWidth;
+    creditsTexts.back().dstR.h = 10;
+    creditsTexts.back().dstR.x = 0;
+    creditsTexts.back().dstR.y = creditsTexts[2].dstR.y + creditsTexts[2].dstR.h;
     Text scoreText;
     scoreText.autoAdjustW = true;
     scoreText.wMultiplier = 0.7;
@@ -558,7 +567,15 @@ gameBegin:
     scoreText.dstR.y = 0;
     scoreText.dstR.h = 30;
     scoreText.dstR.x = windowWidth / 2 - scoreText.dstR.w / 2;
+    Text applesText;
+    applesText.autoAdjustW = true;
+    applesText.wMultiplier = 0.7;
+    applesText.setText(renderer, robotoF, "0");
+    applesText.dstR.y = scoreText.dstR.y + scoreText.dstR.h;
+    applesText.dstR.h = 30;
+    applesText.dstR.x = windowWidth / 2 - applesText.dstR.w / 2;
     Clock wallsClock;
+    Clock applesClock;
     Clock clock;
     while (running) {
         float deltaTime = clock.restart();
@@ -617,6 +634,14 @@ gameBegin:
             addWall(wallsR, buttonsR);
             wallsClock.restart();
         }
+        if (applesClock.getElapsedTime() > 10000) {
+            applesR.push_back(SDL_FRect());
+            applesR.back().w = 32;
+            applesR.back().h = 32;
+            applesR.back().x = windowWidth;
+            applesR.back().y = random(0, windowHeight - applesR.back().h);
+            applesClock.restart();
+        }
         // NOTE: Assume that there is only one wall behid the button
         for (int i = 0; i < buttonsR.size(); ++i) {
             if (playerR.y + playerR.h == windowHeight && (int)(playerR.x + playerR.w / 2) == (int)(buttonsR[i].x + buttonsR[i].w / 2) && playerR.x + playerR.w >= buttonsR[i].x + buttonsR[i].w) {
@@ -641,6 +666,9 @@ gameBegin:
                 buttonsR.erase(buttonsR.begin() + i--);
             }
         }
+        for (int i = 0; i < applesR.size(); ++i) {
+            applesR[i].x -= APPLE_SPEED * deltaTime;
+        }
         if (playerR.y + playerR.h < windowHeight) {
             playerR.y += 0.1 * deltaTime;
         }
@@ -650,6 +678,12 @@ gameBegin:
         for (int i = 0; i < wallsR.size(); ++i) {
             if (SDL_HasIntersectionF(&playerR, &wallsR[i])) {
                 goto gameBegin;
+            }
+        }
+        for (int i = 0; i < applesR.size(); ++i) {
+            if (SDL_HasIntersectionF(&playerR, &applesR[i])) {
+                applesText.setText(renderer, robotoF, std::to_string(std::stoi(applesText.text) + 1));
+                applesR.erase(applesR.begin() + i--);
             }
         }
         controls1Text.dstR.x -= 0.04 * deltaTime;
@@ -677,6 +711,16 @@ gameBegin:
             }
         }
         scoreText.draw(renderer);
+        for (int i = 0; i < applesR.size(); ++i) {
+            SDL_RenderCopyF(renderer, appleT, 0, &applesR[i]);
+        }
+        applesText.draw(renderer);
+        SDL_Rect appleR;
+        appleR.w = 32;
+        appleR.h = 32;
+        appleR.x = applesText.dstR.x + applesText.dstR.w;
+        appleR.y = applesText.dstR.y + applesText.dstR.h/2-appleR.h/2;
+        SDL_RenderCopy(renderer, appleT, 0, &appleR);
         SDL_RenderPresent(renderer);
     }
     // TODO: On mobile remember to use eventWatch function (it doesn't reach this code when terminating)
