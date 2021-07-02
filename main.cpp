@@ -480,9 +480,6 @@ SDL_bool SDL_HasIntersectionF(const SDL_FRect* A, const SDL_FRect* B)
 
 int main(int argc, char* argv[])
 {
-    // TODO: Attribute:
-    // https://opengameart.org/content/small-grey-trim-alt
-    // https://opengameart.org/content/fat-bird-sprite-sheets-for-gamedev
     std::srand(std::time(0));
     SDL_LogSetAllPriority(SDL_LOG_PRIORITY_VERBOSE);
     SDL_LogSetOutputFunction(logOutputCallback, 0);
@@ -499,6 +496,12 @@ gameBegin:
     SDL_RenderSetScale(renderer, w / (float)windowWidth, h / (float)windowHeight);
     SDL_AddEventWatch(eventWatch, 0);
     bool running = true;
+    SDL_Texture* questionMarkT = IMG_LoadTexture(renderer, "res/questionMark.png");
+    SDL_Rect questionMarkR;
+    questionMarkR.w = 32;
+    questionMarkR.h = 32;
+    questionMarkR.x = windowWidth - questionMarkR.w;
+    questionMarkR.y = 0;
     SDL_Texture* buttonT = IMG_LoadTexture(renderer, "res/button.png");
     std::vector<SDL_Texture*> playerTextures;
     for (int i = 0; i < 8; ++i) {
@@ -522,6 +525,39 @@ gameBegin:
     Text controls2Text = controls1Text;
     controls2Text.setText(renderer, robotoF, "Mouse Scroll - change size");
     controls2Text.dstR.y = controls1Text.dstR.y + controls1Text.dstR.h + 2;
+    bool shouldDisplayCredits = SDL_PointInRect(&mousePos, &questionMarkR);
+    Text creditsText;
+    creditsText.setText(renderer, robotoF, "Credits: ");
+    creditsText.dstR.w = 130;
+    creditsText.dstR.h = 30;
+    creditsText.dstR.x = windowWidth / 2 - creditsText.dstR.w / 2;
+    creditsText.dstR.y = 0;
+    std::vector<Text> creditsTexts;
+    creditsTexts.push_back(Text());
+    creditsTexts.back().setText(renderer, robotoF, "https://opengameart.org/content/small-grey-trim-alt");
+    creditsTexts.back().dstR.w = windowWidth;
+    creditsTexts.back().dstR.h = 10;
+    creditsTexts.back().dstR.x = 0;
+    creditsTexts.back().dstR.y = creditsText.dstR.y + creditsText.dstR.h;
+    creditsTexts.push_back(Text());
+    creditsTexts.back().setText(renderer, robotoF, "https://opengameart.org/content/fat-bird-sprite-sheets-for-gamedev");
+    creditsTexts.back().dstR.w = windowWidth;
+    creditsTexts.back().dstR.h = 10;
+    creditsTexts.back().dstR.x = 0;
+    creditsTexts.back().dstR.y = creditsTexts[0].dstR.y + creditsTexts[0].dstR.h;
+    creditsTexts.push_back(Text());
+    creditsTexts.back().setText(renderer, robotoF, "Smashicons");
+    creditsTexts.back().dstR.w = windowWidth;
+    creditsTexts.back().dstR.h = 10;
+    creditsTexts.back().dstR.x = 0;
+    creditsTexts.back().dstR.y = creditsTexts[1].dstR.y + creditsTexts[1].dstR.h;
+    Text scoreText;
+    scoreText.autoAdjustW = true;
+    scoreText.wMultiplier = 0.7;
+    scoreText.setText(renderer, robotoF, "0");
+    scoreText.dstR.y = 0;
+    scoreText.dstR.h = 30;
+    scoreText.dstR.x = windowWidth / 2 - scoreText.dstR.w / 2;
     Clock wallsClock;
     Clock clock;
     while (running) {
@@ -558,6 +594,7 @@ gameBegin:
                 mousePos.y = event.motion.y / scaleY;
                 realMousePos.x = event.motion.x;
                 realMousePos.y = event.motion.y;
+                shouldDisplayCredits = SDL_PointInRect(&mousePos, &questionMarkR);
             }
             if (event.type == SDL_MOUSEWHEEL) {
                 if (event.wheel.y > 0) // scroll up
@@ -595,6 +632,7 @@ gameBegin:
             wallsR[i].x -= WALL_SPEED * deltaTime;
             if (wallsR[i].x + wallsR[i].w < 0) {
                 wallsR.erase(wallsR.begin() + i--);
+                scoreText.setText(renderer, robotoF, std::to_string(std::stoi(scoreText.text) + 1));
             }
         }
         for (int i = 0; i < buttonsR.size(); ++i) {
@@ -631,6 +669,14 @@ gameBegin:
         }
         controls1Text.draw(renderer);
         controls2Text.draw(renderer);
+        SDL_RenderCopy(renderer, questionMarkT, 0, &questionMarkR);
+        if (shouldDisplayCredits) {
+            creditsText.draw(renderer);
+            for (int i = 0; i < creditsTexts.size(); ++i) {
+                creditsTexts[i].draw(renderer);
+            }
+        }
+        scoreText.draw(renderer);
         SDL_RenderPresent(renderer);
     }
     // TODO: On mobile remember to use eventWatch function (it doesn't reach this code when terminating)
